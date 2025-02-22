@@ -1,0 +1,15 @@
+*{
+  margin: 0;
+  padding: 0;
+}
+.ul li a{
+  text-decoration: none;
+  color: #ccc;
+}
+.img:hover{
+  position: relative;
+  bottom: 50px;
+}
+.signUp:disabled{
+  background-color: #ccc !important;
+}
