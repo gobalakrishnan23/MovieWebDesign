@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
+import {
+  GoogleOAuthProvider,
+  GoogleLogin,
+  googleLogout,
+} from "@react-oauth/google";
 
 function Home() {
   const [movies, setMovies] = useState([]);
@@ -19,18 +23,25 @@ function Home() {
   const [email, setEmail] = useState(false);
   const [name, setName] = useState(false);
   const [password, setPassword] = useState(false);
-  const [loading,setLoading] = useState(false);
-  const [errorMassage,setErrorMassage] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMassage, setErrorMassage] = useState(false);
 
-  const [userLogin,setUserLogin] = useState({userName:"",password:""});
-  const [loginUserName,setLoginUserName] = useState(false);
-  const [loginPassword,setLoginPassword] = useState(false);
-  const [errorMassageLogin,setErrorMassageLogin] = useState(false);
+  const [userLogin, setUserLogin] = useState({ userName: "", password: "" });
+  const [loginUserName, setLoginUserName] = useState(false);
+  const [loginPassword, setLoginPassword] = useState(false);
+  const [errorMassageLogin, setErrorMassageLogin] = useState(false);
+
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const navigate = useNavigate("");
 
   const api_key = "0a59508dccbd6c2679bfddba17699cf0";
   const api = `https://api.themoviedb.org/3/movie/now_playing?api_key=${api_key}`;
+
+  const isAuth = useMemo(
+    () => localStorage.getItem("loggedIn") === "true",
+    [localStorage.getItem("loggedIn")]
+  );
 
   useEffect(() => {
     fetch(api)
@@ -47,6 +58,8 @@ function Home() {
       })
       .catch((error) => console.error("Error fetching data:", error));
   }, []);
+
+  
 
   function handleImage(childMessage) {
     document.getElementById(
@@ -101,57 +114,80 @@ function Home() {
       setPassword(false);
     }
 
-    if(hasError){
+    if (hasError) {
       setLoading(false);
       return;
     }
 
-    if(userSign.emailAddress !== "a.g.gobalakrishnan@gmail.com" || userSign.userName !== "gobalakrishnan" || userSign.password !== "230520003"){
+    if (
+      userSign.emailAddress !== "a.g.gobalakrishnan@gmail.com" ||
+      userSign.userName !== "gobalakrishnan" ||
+      userSign.password !== "230520003"
+    ) {
       setErrorMassage(true);
       setLoading(false);
-    }else{
+    } else {
       setErrorMassage(false);
-      navigate("/api")
-      setLoading(true)
+      navigate("/api");
+      setLoading(true);
     }
-
   }
-
 
   function handleLoginChange() {
     let hasError = false;
 
     if (userLogin.userName === "") {
-        setLoginUserName(true);
-        hasError = true;  // Should be set to true when there's an error
+      setLoginUserName(true);
+      hasError = true; // Should be set to true when there's an error
     } else {
-        setLoginUserName(false);
+      setLoginUserName(false);
     }
 
     if (userLogin.password === "") {
-        setLoginPassword(true);
-        hasError = true;  // Should be set to true when there's an error
+      setLoginPassword(true);
+      hasError = true; // Should be set to true when there's an error
     } else {
-        setLoginPassword(false);
+      setLoginPassword(false);
     }
 
     // If there are validation errors, stop the process
     if (hasError) {
-        setLoading(false);
-        return;
+      setLoading(false);
+      return;
     }
 
     // Validate credentials
-    if (userLogin.userName !== "gobalakrishnan" || userLogin.password !== "230520003") {
-        setErrorMassageLogin(true);
+    if (
+      userLogin.userName !== "gobalakrishnan" ||
+      userLogin.password !== "230520003"
+    ) {
+      setErrorMassageLogin(true);
     } else {
-        setErrorMassageLogin(false);
-        setLoading(true); // Start loading before navigating
-        navigate("/api");
+      setErrorMassageLogin(false);
+      setLoading(true); // Start loading before navigating
+      navigate("/api");
     }
-    }
+  }
 
-   
+  useEffect(() => {
+    const token = localStorage.getItem("google_token");
+    if (token) setIsLoggedIn(true);
+  }, []);
+
+  const handleLoginSuccess = (credentialResponse) => {
+    setIsLoggedIn(true);
+    navigate("/api");
+    const token = credentialResponse.credential;
+    localStorage.setItem("google_token", token);
+    console.log("Logged in:", credentialResponse);
+  };
+
+  const handleLogout = () => {
+    googleLogout();
+    setIsLoggedIn(false);
+    localStorage.removeItem("google_token"); // Remove token
+    console.log("Logged out");
+  };
 
   return (
     <>
@@ -208,8 +244,8 @@ function Home() {
                 value={userSign.emailAddress}
                 onChange={(e) =>
                   setUserSign((pre) => {
-                    console.log({ ...pre, emailAddress: e.target.value })
-                    return { ...pre, emailAddress: e.target.value }
+                    console.log({ ...pre, emailAddress: e.target.value });
+                    return { ...pre, emailAddress: e.target.value };
                   })
                 }
               ></input>
@@ -227,10 +263,12 @@ function Home() {
                   borderRadius: 5,
                 }}
                 value={userSign.userName}
-                onChange={(e) => setUserSign((pre) => {
-                  console.log({ ...pre, userName: e.target.value })
-                  return { ...pre, userName: e.target.value }
-                })}
+                onChange={(e) =>
+                  setUserSign((pre) => {
+                    console.log({ ...pre, userName: e.target.value });
+                    return { ...pre, userName: e.target.value };
+                  })
+                }
               ></input>
               {name && <p style={{ color: "red" }}>Username is required</p>}
               <label style={{ display: "block", marginTop: 20 }}>
@@ -247,10 +285,12 @@ function Home() {
                   display: "block",
                 }}
                 value={userSign.password}
-                onChange={(e) => setUserSign((pre) => {
-                  console.log({ ...pre, password: e.target.value })
-                  return { ...pre, password: e.target.value }
-                })}
+                onChange={(e) =>
+                  setUserSign((pre) => {
+                    console.log({ ...pre, password: e.target.value });
+                    return { ...pre, password: e.target.value };
+                  })
+                }
               ></input>
               {password && <p style={{ color: "red" }}>Password is required</p>}
               <input
@@ -260,10 +300,16 @@ function Home() {
               <p style={{ display: "inline-block", marginLeft: 10 }}>
                 I do not want to receive emails
               </p>
-              {loading && <p style={{textAlign:"center",}}>Loading ...</p>}
-              {errorMassage && <p style={{color:"red"}}>Invalid email,username or password</p>}
+              {loading && <p style={{ textAlign: "center" }}>Loading ...</p>}
+              {errorMassage && (
+                <p style={{ color: "red" }}>
+                  Invalid email,username or password
+                </p>
+              )}
               <div style={{ borderBottom: "1px solid #ccc", padding: 20 }}>
-                <button disabled={loading} className="signUp"
+                <button
+                  disabled={loading}
+                  className="signUp"
                   style={{
                     backgroundColor: "violet",
                     paddingTop: 10,
@@ -288,10 +334,17 @@ function Home() {
                 }}
               >
                 <GoogleOAuthProvider clientId="976265445835-vs940jjvvlhvuur4bkb2bf7herk5c0n8.apps.googleusercontent.com">
-                 <GoogleLogin
-                    onSuccess={(response) => console.log(response)}
-                    onError={() => console.log("Login Failed")}
-                 />
+                  {isLoggedIn ? (
+                    <div>
+                    <p>You are logged in!</p>
+                    <button onClick={handleLogout}>Log Out</button>
+                  </div>
+                  ) : (
+                    <GoogleLogin
+                      onSuccess={handleLoginSuccess}
+                      onError={() => console.log("Login Failed")}
+                    />
+                  )}
                 </GoogleOAuthProvider>
               </div>
             </div>
@@ -337,9 +390,13 @@ function Home() {
               <label style={{ display: "block", marginTop: 30 }}>
                 Username
               </label>
-              <input value={userLogin.userName} onChange={(e)=>setUserLogin((prev)=>{
-                return {...prev,userName:e.target.value}
-              })}
+              <input
+                value={userLogin.userName}
+                onChange={(e) =>
+                  setUserLogin((prev) => {
+                    return { ...prev, userName: e.target.value };
+                  })
+                }
                 type="text"
                 style={{
                   padding: 10,
@@ -349,13 +406,19 @@ function Home() {
                   borderRadius: 5,
                 }}
               ></input>
-              {loginUserName && <p style={{color:"red"}}>Username is required</p>}
+              {loginUserName && (
+                <p style={{ color: "red" }}>Username is required</p>
+              )}
               <label style={{ display: "block", marginTop: 20 }}>
                 Password
               </label>
-              <input value={userLogin.password} onChange={(e)=>setUserLogin((prev)=>{
-                return {...prev,password:e.target.value}
-              })}
+              <input
+                value={userLogin.password}
+                onChange={(e) =>
+                  setUserLogin((prev) => {
+                    return { ...prev, password: e.target.value };
+                  })
+                }
                 type="password"
                 style={{
                   padding: 10,
@@ -366,7 +429,9 @@ function Home() {
                   display: "block",
                 }}
               ></input>
-              {loginPassword && <p style={{color:"red"}}>Password is required</p>}
+              {loginPassword && (
+                <p style={{ color: "red" }}>Password is required</p>
+              )}
               <input
                 type="checkbox"
                 style={{ marginTop: 20, display: "inline-block" }}
@@ -374,10 +439,15 @@ function Home() {
               <p style={{ display: "inline-block", marginLeft: 10 }}>
                 remember me
               </p>
-              {loading && <p style={{textAlign:"center"}}>Loading ...</p>}
-              {errorMassageLogin && <p style={{color:"red"}}>Invalid username or password</p>}
+              {loading && <p style={{ textAlign: "center" }}>Loading ...</p>}
+              {errorMassageLogin && (
+                <p style={{ color: "red" }}>Invalid username or password</p>
+              )}
               <div style={{ borderBottom: "1px solid #ccc", padding: 20 }}>
-                <button onClick={handleLoginChange} disabled={loading} className="signUp"
+                <button
+                  onClick={handleLoginChange}
+                  disabled={loading}
+                  className="signUp"
                   style={{
                     backgroundColor: "violet",
                     paddingTop: 10,
@@ -401,10 +471,10 @@ function Home() {
                 }}
               >
                 <GoogleOAuthProvider clientId="976265445835-vs940jjvvlhvuur4bkb2bf7herk5c0n8.apps.googleusercontent.com">
-                 <GoogleLogin
+                  <GoogleLogin
                     onSuccess={(response) => console.log(response)}
                     onError={() => console.log("Login Failed")}
-                 />
+                  />
                 </GoogleOAuthProvider>
               </div>
             </div>
@@ -468,7 +538,8 @@ function Home() {
             >
               Login
             </button>
-            <button className="signUp"
+            <button
+              className="signUp"
               onClick={() => signUpDetails()}
               style={{
                 paddingTop: 8,
@@ -494,7 +565,8 @@ function Home() {
           <div style={{ width: 600 }}>
             <h1 style={{ fontSize: 40, color: "#FFFFFF" }}>{title}</h1>
             <p style={{ color: "#FFFFFF", marginTop: 10 }}>{overview}</p>
-            <button onClick={signUpDetails}
+            <button
+              onClick={signUpDetails}
               style={{
                 paddingTop: 8,
                 paddingBottom: 8,
@@ -507,11 +579,7 @@ function Home() {
                 marginTop: 40,
               }}
             >
-              <a
-                style={{ textDecoration: "none", color: "#ccc" }}
-              >
-                Watch
-              </a>
+              <a style={{ textDecoration: "none", color: "#ccc" }}>Watch</a>
             </button>
           </div>
           <div>
